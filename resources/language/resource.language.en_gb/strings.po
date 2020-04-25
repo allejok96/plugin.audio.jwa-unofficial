@@ -1,0 +1,174 @@
+# Not transifexically correct, but it works
+# The comments are translated to variable names by translations.py so don't mess with them :)
+# And for some reason there must be an empty string at the start
+msgid ""
+msgstr ""
+
+# 30001 deleted
+
+# 30002 deleted
+
+# play lang
+msgctxt "#30003"
+msgid "Play in another language"
+msgstr ""
+
+# connection error
+msgctxt "#30004"
+msgid "Connection error"
+msgstr ""
+
+# loading lang
+msgctxt "#30005"
+msgid "Loading languages, please wait..."
+msgstr ""
+
+# theo warn
+msgctxt "#30006"
+msgid "Theocratic warning"
+msgstr ""
+
+# not supp jw
+msgctxt "#30007"
+msgid "This add-on is not supported by jw.org"
+msgstr ""
+
+# understand
+msgctxt "#30008"
+msgid "I understand"
+msgstr ""
+
+# more info
+msgctxt "#30009"
+msgid "More info"
+msgstr ""
+
+# bible
+msgctxt "#30010"
+msgid "Bible"
+msgstr ""
+
+# magazines
+msgctxt "#30011"
+msgid "Magazines"
+msgstr ""
+
+# books
+msgctxt "#30012"
+msgid "Books & Brochures"
+msgstr ""
+
+# not avail
+msgctxt "#30013"
+msgid "Not available in the current language"
+msgstr ""
+
+# add more
+msgctxt "#30014"
+msgid "Add more..."
+msgstr ""
+
+# auto scan
+msgctxt "#30015"
+msgid "Auto scan"
+msgstr ""
+
+# scan question
+msgctxt "#30016"
+msgid "Scan for common publications?"
+msgstr ""
+
+# scanning
+msgctxt "#30017"
+msgid "Scanning, please wait..."
+msgstr ""
+
+# scan done
+msgctxt "#30018"
+msgid "Scan complete"
+msgstr ""
+
+# enter pub
+msgctxt "#30019"
+msgid "Enter a publication code (examples: bhs, lv, yb10)"
+msgstr ""
+
+# pub added
+msgctxt "#30020"
+msgid "The publication was added to the library"
+msgstr ""
+
+# wrong code
+msgctxt "#30021"
+msgid "Wrong code or the publication is not available in the current language"
+msgstr ""
+
+# clean cache
+msgctxt "#30022"
+msgid "Clean cache"
+msgstr ""
+
+# clean question
+msgctxt "#30023"
+msgid "Do you want to remove the cache?\n"
+msgstr ""
+
+# cache cleaned
+msgctxt "#30024"
+msgid "Cache has been removed"
+msgstr ""
+
+# trans update
+msgctxt "#30025"
+msgid "Updating translations, please wait..."
+msgstr ""
+
+# disclaimer
+msgctxt "#30026"
+msgid "This add-on is not supported by, or affiliated with the Watchtower society in any way.\n\n"
+"Please use the official JW Broadcasting app for your device, if available.\n"
+"Or consider buying a device that supports the JW Broadcasting or JW Library app.\n\n"
+"Since this add-on is homemade, you must choose if you are willing to trust it.\n"
+"- The add-on may not work as intended.\n"
+"- You may not get all the benefits of tv.jw.org.\n"
+"- The spiritual food could in absolute worst case be tampered with.\n\n"
+"Please read the following Watchtower article before you make up your mind:\n"
+"[B]w18 April page 30[/B]\n\n"
+"You can turn off this warning in the add-on settings."
+
+# db error
+msgctxt "#30027"
+msgid "Database error, try [B]Clean cache[/B] in add-on settings"
+msgstr ""
+
+msgctxt "#30028"
+msgid "Change language"
+msgstr ""
+
+msgctxt "#30029"
+msgid "Current language"
+msgstr ""
+
+msgctxt "#30030"
+msgid "Show startup warning"
+msgstr ""
+
+# wt
+msgctxt "#30031"
+msgid "The Watchtower"
+msgstr ""
+
+# wt study
+msgctxt "#30032"
+msgid "The Watchtower - Study Edition"
+msgstr ""
+
+# wt simple
+msgctxt "#30033"
+msgid "The Watchtower - Study Edition (simplified)"
+msgstr ""
+
+# awake
+msgctxt "#30034"
+msgid "Awake!"
+msgstr ""

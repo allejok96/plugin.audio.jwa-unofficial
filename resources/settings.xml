@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <setting visible="false" id="language" type="text" default="E"/>
+    <setting visible="false" id="langhist" type="text" default=""/>
+    <setting label="30029" id="langname" type="text" default="English / English" enable="false"/>
+    <setting label="30028" type="action" option="close" action="RunPlugin(plugin://plugin.audio.jwa-unofficial/?mode=langlist)"/>
+    <setting label="30022" type="action" action="RunPlugin(plugin://plugin.audio.jwa-unofficial/?mode=clean)"/>
+    <setting label="30030" id="startupmsg" type="bool"  default="true"/>
+</settings>

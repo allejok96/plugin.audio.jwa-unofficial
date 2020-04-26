@@ -602,7 +602,7 @@ def set_language_action(lang, printable_name=None):
     addon.setSetting(SettingID.LANG_NAME, printable_name or lang)
     save_language_history(lang)
 
-    if lang != 'E':
+    if lang != 'E' and enable_scrapper:
         update_translations(lang)
 
 
@@ -630,6 +630,7 @@ def play_track(pubdata, track):
 addon_handle = int(sys.argv[1])  # needed for gui
 addon = xbmcaddon.Addon()  # needed for info
 global_language = addon.getSetting(SettingID.LANG) or 'E'
+enable_scrapper = addon.getSetting(SettingID.SCRAPPER) == 'true'
 
 addon_dir = xbmc.translatePath(addon.getAddonInfo('profile'))
 try:
@@ -665,7 +666,11 @@ try:
     cache = CacheDatabase(cache_path)
 
     # Special class that will lookup its values in the database of scrapped translations
-    T = ScrappedStringID(get_translation)
+    if enable_scrapper:
+        T = ScrappedStringID(get_translation)
+    else:
+        # This will return None for all lookups
+        T = ScrappedStringID(lambda x: None)
 
     arg_pub = PublicationData(pub=args.get(Q.PUB),
                               issue=args.get(Q.ISSUE),
@@ -708,7 +713,7 @@ try:
 
     elif arg_mode == M.CLEAN_CACHE:
         # Since translations was removed with the cache, update them now
-        if global_language != 'E':
+        if global_language != 'E' and enable_scrapper:
             update_translations(global_language)
 
     # Note: no need to close database, due to how sqlite works

@@ -6,4 +6,5 @@
     <setting label="30028" type="action" option="close" action="RunPlugin(plugin://plugin.audio.jwa-unofficial/?mode=langlist)"/>
     <setting label="30022" type="action" action="RunPlugin(plugin://plugin.audio.jwa-unofficial/?mode=clean)"/>
     <setting label="30030" id="startupmsg" type="bool"  default="true"/>
+    <setting label="30035" id="trscrapper" type="bool"  default="true"/>
 </settings>

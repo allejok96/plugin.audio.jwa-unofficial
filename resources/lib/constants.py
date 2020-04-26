@@ -64,6 +64,7 @@ class SettingID(object):
     LANG_HIST = 'langhist'
     LANG_NAME = 'langname'
     STARTUP_MSG = 'startupmsg'
+    SCRAPPER = 'trscrapper'
 
 
 class ScrappedStringID(AttributeProxy):

@@ -207,7 +207,9 @@ def download_pub_data(pubdata):
     if j.get('formattedDate'):
         title += ' ' + j['formattedDate']
     new_pub.title = unescape(title)
-    new_pub.icon = j.get('pubImage', {}).get('url')
+    # Don't save icon for the bible, they are ugly atm
+    if pubdata.pub not in ('bi12', 'nwt'):
+        new_pub.icon = j.get('pubImage', {}).get('url')
     cache.publ.insert(new_pub)
 
     media_list = []
@@ -379,8 +381,6 @@ def bible_page():
             request = PublicationData(pub=bible, booknum=0, lang=global_language)
             # Note: we download the bible index page, so it's always current
             pub, media = download_pub_data(request)
-            # Remove that ugly icon from bi-12
-            pub.icon = None
             PublicationItem(pub).add_item_in_kodi()
             success = True
         except NotFoundError:

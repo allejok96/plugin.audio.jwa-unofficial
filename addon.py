@@ -1,35 +1,48 @@
 #!/usr/bin/env python
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import HTMLParser
-import os.path
+import json
+import os
 import sys
 import traceback
-import urllib2
-import xbmc
-import xbmcaddon
-import xbmcgui
-import xbmcplugin
 from datetime import datetime, date, timedelta
+from kodi_six import xbmc, xbmcaddon, xbmcgui, xbmcplugin, py2_encode, py2_decode
 from sqlite3 import Error as DBError
-from urllib import urlencode
-from urlparse import parse_qs
 
 from resources.lib.constants import *
 from resources.lib.database import CacheDatabase, PublicationData, MediaData, TranslationData, Ignore
-from resources.lib.i18n import JwOrgParser
+from resources.lib.scrapper import JwOrgParser, unescape
 
-try:
-    import simplejson as json  # they say it's faster
-except ImportError:
-    import json
-
-unescape = HTMLParser.HTMLParser().unescape
 Q = Query
 M = Mode
 
+try:
+    from urllib.error import HTTPError
+    from urllib.parse import parse_qs, urlencode
+    from urllib.request import urlopen
 
-class InvalidPubError(Exception):
-    """Raised when getting a 404 from the jw api"""
+except ImportError:
+    from urllib2 import HTTPError, urlopen
+    from urlparse import parse_qs as _parse_qs
+    from urllib import urlencode as _urlencode
+
+    # Py2: urlencode only accepts byte strings
+    def urlencode(query):
+        # Dict[str, str] -> str
+        return py2_decode(_urlencode({py2_encode(param): py2_encode(arg) for param, arg in query.items()}))
+
+    # Py2: even if parse_qs accepts unicode, the return makes no sense
+    def parse_qs(qs):
+        # str -> Dict[str, List[str]]
+        return {py2_decode(param): [py2_decode(a) for a in args]
+                for param, args in _parse_qs(py2_encode(qs)).items()}
+
+    # Py2: When using str, we mean unicode string
+    str = unicode
+
+
+class NotFoundError(Exception):
+    """Raised when getting a 404"""
     pass
 
 
@@ -43,20 +56,27 @@ def log(msg, level=xbmc.LOGDEBUG):
 def notification(msg, **kwargs):
     """Show a GUI notification"""
 
+    # Py2: dict.get() is ok with unicode, as long as it's all ASCII characters
     xbmcgui.Dialog().notification(addon.getAddonInfo('name'), msg,
                                   icon=kwargs.get('icon') or xbmcgui.NOTIFICATION_ERROR)
 
 
-def get_json(url):
+def get_json(url, exit_on_404=True):
+    # type: (str, bool) -> dict
     """Fetch JSON data from an URL and return it as a dict"""
 
     log('opening ' + url, xbmc.LOGINFO)
     try:
-        data = urllib2.urlopen(url).read().decode('utf-8')
-    except urllib2.HTTPError:
-        raise
-    except urllib2.URLError as e:
-        log('{}: {}'.format(url, e.reason), xbmc.LOGERROR)
+        # urlopen returns bytes
+        # Set high timeout, because AWS blocks requests from urllib for about 10 sec
+        data = urlopen(url, timeout=20).read().decode('utf-8')
+
+    # Catches URLError, HTTPError, SSLError ...
+    except IOError as e:
+        # Pass on 404 for handling by someone else
+        if isinstance(e, HTTPError) and e.code == 404 and not exit_on_404:
+            raise NotFoundError
+        log(traceback.format_exc(), level=xbmc.LOGERROR)
         notification(S.CONNECTION_ERROR)
         exit(1)
         raise  # to make PyCharm happy
@@ -64,7 +84,7 @@ def get_json(url):
     return json.loads(data)
 
 
-def getpubmedialinks_json(pubdata, alllangs=False):
+def getpubmedialinks_json(pubdata, alllangs=False, exit_on_404=True):
     """Make a request to JW API and return JSON as a dict"""
 
     assert pubdata.pub
@@ -79,7 +99,7 @@ def getpubmedialinks_json(pubdata, alllangs=False):
                  alllangs=int(alllangs))
     # Remove empty queries
     query = {key: value for key, value in query.items() if value is not None}
-    return get_json(PUBMEDIA_API + '?' + urlencode(query))
+    return get_json(PUBMEDIA_API + '?' + urlencode(query), exit_on_404=exit_on_404)
 
 
 def request_to_self(pubdata=None, mode=None, pub=None, year=None, lang=None, langname=None, track=None):
@@ -142,9 +162,9 @@ def update_translations(lang):
     progressbar.update(50)
     try:
         url = '{}?docid={}&wtlocale={}'.format(FINDER_API, DOCID_MAGAZINES, lang)
-        response = urllib2.urlopen(url)
-        html = response.read().decode('utf-8')
-        translations = JwOrgParser.parse(html)
+        # urlopen returns bytes
+        response = urlopen(url).read().decode('utf-8')
+        translations = JwOrgParser.parse(response)
         for key, value in translations.items():
             cache.trans.delete(TranslationData(key=key, lang=lang))
             cache.trans.insert(TranslationData(key=key, string=value, lang=lang))
@@ -159,18 +179,15 @@ def download_pub_data(pubdata):
     Return publication and list of contained media
     """
     try:
-        j = getpubmedialinks_json(pubdata)
+        j = getpubmedialinks_json(pubdata, exit_on_404=False)
 
-    except urllib2.HTTPError as e:
-        if e.code == 404:
-            # Cache the failure... yes, that's right, so we don't retry for a while
-            cache.publ.delete(pubdata)
-            failed_pub = PublicationData.copy(pubdata)
-            failed_pub.failed = datetime.now()
-            cache.publ.insert(failed_pub)
-            raise InvalidPubError
-        else:
-            raise
+    except NotFoundError:
+        # Cache the failure... yes, that's right, so we don't retry for a while
+        cache.publ.delete(pubdata)
+        failed_pub = PublicationData.copy(pubdata)
+        failed_pub.failed = datetime.now()
+        cache.publ.insert(failed_pub)
+        raise
 
     # Remove old publication metadata
     # For bible index page: remove all bible books
@@ -236,7 +253,7 @@ def get_pub_data(pubdata):
         return cached_pub
     # Has failed within the last 24 hours
     elif datetime.now() < cached_pub.failed + timedelta(days=1):
-        raise InvalidPubError
+        raise NotFoundError
     # Refresh
     pub, media = download_pub_data(pubdata)
     return pub
@@ -366,7 +383,7 @@ def bible_page():
             pub.icon = None
             PublicationItem(pub).add_item_in_kodi()
             success = True
-        except InvalidPubError:
+        except NotFoundError:
             pass
 
     if not success:
@@ -453,7 +470,7 @@ def magazine_page(pub=None, year=None):
                 get_pub_data(request)
                 PublicationItem(next(cache.publ.select(request))).add_item_in_kodi(total=len(issues))
                 success = True
-            except InvalidPubError:
+            except NotFoundError:
                 pass
 
         if not success:
@@ -519,11 +536,12 @@ def add_books_dialog(auto=False):
                 progressbar.update(i * 100 // len(books), S.SCANNING + ' ' + books[i])
                 try:
                     get_pub_data(PublicationData(pub=books[i], lang=global_language))
-                except InvalidPubError:
+                except NotFoundError:
                     pass
+            else:
+                xbmcgui.Dialog().ok(S.AUTO_SCAN, S.SCAN_DONE)
         finally:
             progressbar.close()
-        xbmcgui.Dialog().ok(S.AUTO_SCAN, S.SCAN_DONE)
 
     else:
         code = xbmcgui.Dialog().input(S.ENTER_PUB)
@@ -531,7 +549,7 @@ def add_books_dialog(auto=False):
             try:
                 get_pub_data(PublicationData(pub=code, lang=global_language))
                 xbmcgui.Dialog().ok('', S.PUB_ADDED)
-            except InvalidPubError:
+            except NotFoundError:
                 xbmcgui.Dialog().ok('', S.WRONG_CODE)
 
 
@@ -582,8 +600,7 @@ def language_dialog(pubdata=None, track=None, preselect=None):
             if pubdata:
                 request = request_to_self(pubdata, mode=M.OPEN, lang=code, track=track)
             else:
-                # Note: langname will be URL escaped, but it has to be encoded to str, not unicode
-                request = request_to_self(mode=M.SET_LANG, lang=code, langname=name.encode('utf-8'))
+                request = request_to_self(mode=M.SET_LANG, lang=code, langname=name)
             # Note: RunPlugin opens in the background
             dialog_actions.append('RunPlugin(' + request + ')')
 
@@ -623,7 +640,7 @@ def play_track(pubdata, track):
         pub, media_list = download_pub_data(pubdata)
         item = next(MediaItem(m) for m in media_list if m.track == track)
         xbmc.Player().play(item.url, item.listitem())
-    except (InvalidPubError, StopIteration):
+    except (NotFoundError, StopIteration):
         xbmcgui.Dialog().ok('', S.NOT_AVAIL)
 
 

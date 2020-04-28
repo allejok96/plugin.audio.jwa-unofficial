@@ -3,9 +3,14 @@ This module is because SQL is strange
 and even tho Python's DB API is cool, it's a mess using it
 and I want typing support for everything
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
 
+# Py2 note: sqlite.execute() always returns unicode, and seems to prefer unicode input
 import sqlite3
 from datetime import datetime
+
+# Py2: str will become "unicode" in Py2, and "str" (unicode) in Py3
+str = type('')
 
 
 class Ignore(object):
@@ -28,26 +33,32 @@ class DataRow(object):
         return value
 
     def columns(self):
-        """Get all column names (names of class attributes)"""
+        """Generator with all column names (names of class attributes)"""
 
-        return self.__dict__.keys()
+        for key in self.__dict__:
+            # Py2: dict key names are byte string, convert them
+            yield str(key)
 
     def values(self):
-        """Get all values (Ignore becomes None)"""
+        """Generator with all values (Ignore becomes None)"""
 
-        return [getattr(self, col) for col in self.columns()]
+        for col in self.columns():
+            yield getattr(self, col)
 
     def items(self, include_ignored=False):
-        """Return a list of (column, value)
+        """Return a generator with (column, value)
 
         :param include_ignored: If False, leave out columns that are set to Ignore
         """
         if include_ignored:
             # Do an attribute lookup, as this will convert Ignore to None
-            return [(col, getattr(self, col)) for col in self.columns()]
+            for col in self.columns():
+                yield (col, getattr(self, col))
         else:
-            return [(col, getattr(self, col)) for col in self.columns()
-                    if self.__dict__[col] is not Ignore]
+            for col in self.__dict__:
+                if self.__dict__[col] is not Ignore:
+                    # Py2: dict key names are byte string, convert them
+                    yield (str(col), getattr(self, col))
 
     @classmethod
     def copy(cls, obj):
@@ -110,11 +121,10 @@ class Table(object):
     name = ''
 
     def __init__(self, connection):
+        # type: (sqlite3.Connection) -> None
         """CREATE TABLE IF NOT EXISTS table (columns)
 
         Columns are taken from default_row
-
-        :type connection: sqlite3.Connection
         """
         self._conn = connection
 
@@ -134,7 +144,7 @@ class Table(object):
     def insert(self, row):
         # type: (DataRow) -> sqlite3.Cursor
         """INSERT INTO table (columns) VALUES (values)"""
-        question_marks = ','.join(['?'] * len(row.columns()))
+        question_marks = ','.join(['?'] * len(list(row.columns())))
         columns = ','.join(row.columns())
         sql = 'INSERT INTO {} ({}) VALUES ({})'.format(self.name, columns, question_marks)
         with self._conn:
@@ -234,5 +244,5 @@ class Conn(sqlite3.Connection):
     """For debugging"""
 
     def execute(self, sql, parameters=None):
-        print sql, parameters
+        print(sql, parameters)
         return super(Conn, self).execute(sql, parameters or [])

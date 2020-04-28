@@ -1,12 +1,21 @@
 """
 Scrapper of localized strings from jw org
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import HTMLParser
 from resources.lib.constants import ScrappedStringID as T
 
+try:
+    from html.parser import HTMLParser, unescape
+except ImportError:
+    from HTMLParser import HTMLParser
 
-class JwOrgParser(HTMLParser.HTMLParser):
+    # Py2: accepts both unicode and byte string
+    unescape = HTMLParser().unescape
+    str = unicode
+
+
+class JwOrgParser(HTMLParser):
     """
     The parser is adapted to https://www.jw.org/en/library/magazines/ (or corresponding page)
 
@@ -26,22 +35,33 @@ class JwOrgParser(HTMLParser.HTMLParser):
     """
 
     def __init__(self):
-        HTMLParser.HTMLParser.__init__(self)
+        # Cannot use super since Py2 HTMLParser is an old style class
+        HTMLParser.__init__(self)
 
         self.depth = 0
-        self.save_options = 0  # depth
-        self.save_data = 0  # depth
-        self.data_name = None
-        self.strings = {}  # name, translation
+        self.look_for_options = 0  # depth
+        self.look_for_data = 0  # depth
+        self.temp = ''  # concatenation of data
+        self.data_name = None  # dict key
+        self.strings = {}  # key, string
 
     @classmethod
     def parse(cls, data):
         # type: (str) -> dict
         """Takes HTML data as input and returns a dictionary with translations"""
 
-        p = cls()
-        p.feed(data)
-        return p.strings
+        parser = cls()
+        # Remove indentation
+        for line in data.splitlines():
+            line = line.strip()
+            if line:
+                parser.feed(line + '\n')
+        return parser.strings
+
+    def _gather_data(self, name):
+        self.look_for_data = self.depth
+        self.data_name = name
+        self.temp = ''
 
     def handle_starttag(self, tag, attrs):
         """
@@ -58,43 +78,47 @@ class JwOrgParser(HTMLParser.HTMLParser):
 
         if tag == 'div' and role == 'listitem':
             if 'BibleLandingPage' in classes:
-                self.save_data = self.depth
-                self.data_name = T.BIBLE
+                self._gather_data(T.BIBLE)
             elif 'PublicationsMagazinesLandingPage' in classes:
-                self.save_data = self.depth
-                self.data_name = T.MAGAZINES
+                self._gather_data(T.MAGAZINES)
             elif 'PublicationsDefaultLandingPage' in classes:
-                self.save_data = self.depth
-                self.data_name = T.BOOKS
+                self._gather_data(T.BOOKS)
 
         elif tag == 'select':
             if 'jsPublicationFilter' in classes:
-                self.save_options = self.depth
+                self.look_for_options = self.depth
 
         elif tag == 'option':
-            if self.save_options:
+            if self.look_for_options:
                 pub = next((str(a[1]) for a in attrs if a[0] == 'value'), '')
                 if pub in ('g', 'w', 'wp', 'ws'):
-                    self.save_data = self.depth
-                    self.data_name = pub
+                    self._gather_data(pub)
 
     def handle_data(self, data):
         """
         :param data: Some kind of string, blanks and newline will be stripped, empty strings ignored
         """
-        # If we are inside a matching tag, save the data (only first time)
-        if self.save_data:
-            data = data.strip()
-            if data and self.data_name not in self.strings:
-                self.strings[self.data_name] = data
+        # If we are inside a matching tag, save the data (only data inside this tag)
+        if self.look_for_data:
+            self.temp += data
+
+    def handle_entityref(self, name):
+        if self.look_for_data:
+            self.temp += unescape('&' + name + ';')
+
+    handle_charref = handle_entityref
 
     def handle_endtag(self, tag):
         self.depth -= 1
 
-        # If we go a level ABOVE a matching tag, forget about it
-        if self.depth < self.save_data:
-            self.save_data = 0
+        # If we go a level ABOVE a matching tag
+        if self.depth < self.look_for_data:
+            # Save stored data, the first time
+            if self.look_for_data and self.data_name not in self.strings:
+                self.strings[self.data_name] = self.temp.replace('\n', '')
+            # Forget about it
+            self.look_for_data = 0
             self.data_name = None
 
-        if self.depth < self.save_options:
-            self.save_options = 0
+        if self.depth < self.look_for_options:
+            self.look_for_options = 0

@@ -2,6 +2,7 @@
 Static names for valid URL queries etc, to simplify for the IDE (and me)
 and some craziness to be able to write more beautiful code
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 ICON_BIBLE = 'https://wol.jw.org/img/bibles@3x.png'
 ICON_BOOKS = 'https://wol.jw.org/img/books@3x.png'
@@ -29,6 +30,7 @@ class AttributeProxy(object):
         self._func = function
 
     def __getattribute__(self, name):
+        # Py2: getattribute is ok with unicode, as long as it's all ASCII characters
         custom_function = super(AttributeProxy, self).__getattribute__('_func')
         original_value = super(AttributeProxy, self).__getattribute__(name)
         return custom_function(original_value)
@@ -115,13 +117,14 @@ class LocalizedStringID(AttributeProxy):
 
 
 def _generate_string_ids():
-    strings = open('../language/resource.language.en_gb/strings.po').read()
+    # Py2: 'rb' gives us bytes in both Py2 and Py3 so we can decode it to unicode
+    strings = open('../language/resource.language.en_gb/strings.po', 'rb').read().decode('utf-8')
     comment = None
     for line in strings.split('\n'):
         if line.startswith('# '):
             comment = line[2:].replace(' ', '_').upper()
         elif line.startswith('msgctxt') and comment:
-            print '{} = {}'.format(comment, line[10:15])
+            print('{} = {}'.format(comment, line[10:15]))
             comment = None
 
 

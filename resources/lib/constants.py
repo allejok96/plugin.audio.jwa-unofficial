@@ -2,7 +2,7 @@
 Static names for valid URL queries etc, to simplify for the IDE (and me)
 and some craziness to be able to write more beautiful code
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 ICON_BIBLE = 'https://wol.jw.org/img/bibles@3x.png'
 ICON_BOOKS = 'https://wol.jw.org/img/books@3x.png'

@@ -1,7 +1,7 @@
 """
 Scrapper of localized strings from jw org
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 from resources.lib.constants import ScrappedStringID as T
 
@@ -10,7 +10,7 @@ try:
 except ImportError:
     from HTMLParser import HTMLParser
 
-    # Py2: accepts both unicode and byte string
+    # Py2: accepts both unicode and byte string, always returns unicode
     unescape = HTMLParser().unescape
     str = unicode
 

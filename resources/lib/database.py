@@ -3,14 +3,26 @@ This module is because SQL is strange
 and even tho Python's DB API is cool, it's a mess using it
 and I want typing support for everything
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-# Py2 note: sqlite.execute() always returns unicode, and seems to prefer unicode input
+# Py2 note: sqlite.execute() always returns unicode
+# and according to documentation it seems to prefer unicode input
+# but execute() cannot be passed a generator, as PyCharm claims...
 import sqlite3
 from datetime import datetime
+from kodi_six import xbmc, xbmcaddon
 
 # Py2: str will become "unicode" in Py2, and "str" (unicode) in Py3
 str = type('')
+
+_addon_id = xbmcaddon.Addon().getAddonInfo('id')
+
+
+def log(msg, level=xbmc.LOGDEBUG):
+    """Write to log file"""
+
+    for line in msg.splitlines():
+        xbmc.log(_addon_id + ': ' + line, level)
 
 
 class Ignore(object):
@@ -91,6 +103,7 @@ class MediaData(DataRow):
 
     At the moment there is no table for this type of data. It's only used within the Python script.
     """
+
     def __init__(self, pub=Ignore, issue=Ignore, booknum=Ignore, lang=Ignore,
                  url=Ignore, title=Ignore, duration=Ignore, track=Ignore):
         # type: (str, str, int, str, str, str, int, int) -> None
@@ -121,12 +134,11 @@ class Table(object):
     name = ''
 
     def __init__(self, connection):
-        # type: (sqlite3.Connection) -> None
         """CREATE TABLE IF NOT EXISTS table (columns)
 
         Columns are taken from default_row
         """
-        self._conn = connection
+        self._conn = connection  # type: CustomConnection
 
         assert self.name
 
@@ -148,7 +160,8 @@ class Table(object):
         columns = ','.join(row.columns())
         sql = 'INSERT INTO {} ({}) VALUES ({})'.format(self.name, columns, question_marks)
         with self._conn:
-            return self._conn.execute(sql, row.values())
+            # Py2 note: the second argument must not be a generator
+            return self._conn.execute(sql, list(row.values()))
 
     def delete(self, row):
         # type: (DataRow) -> sqlite3.Cursor
@@ -234,15 +247,17 @@ class CacheDatabase(object):
         self.path = path
 
         # PARSE_COLNAMES will convert the timestamp string to a datetime
-        conn = sqlite3.connect(self.path, detect_types=sqlite3.PARSE_DECLTYPES)  # factory=Conn for debugging
+        conn = sqlite3.connect(self.path, detect_types=sqlite3.PARSE_DECLTYPES, factory=CustomConnection)
 
         self.publ = PublicationsTable(conn)
         self.trans = TranslationsTable(conn)
 
 
-class Conn(sqlite3.Connection):
+class CustomConnection(sqlite3.Connection):
     """For debugging"""
 
     def execute(self, sql, parameters=None):
-        print(sql, parameters)
-        return super(Conn, self).execute(sql, parameters or [])
+        # type: (str, list) -> sqlite3.Cursor
+        log('{}, {}'.format(sql, parameters))
+        # Py2 note: sql being unicode is alright
+        return super(CustomConnection, self).execute(sql, parameters or [])

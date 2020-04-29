@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 import json
 import os
@@ -26,16 +26,19 @@ except ImportError:
     from urlparse import parse_qs as _parse_qs
     from urllib import urlencode as _urlencode
 
+
     # Py2: urlencode only accepts byte strings
     def urlencode(query):
         # Dict[str, str] -> str
         return py2_decode(_urlencode({py2_encode(param): py2_encode(arg) for param, arg in query.items()}))
+
 
     # Py2: even if parse_qs accepts unicode, the return makes no sense
     def parse_qs(qs):
         # str -> Dict[str, List[str]]
         return {py2_decode(param): [py2_decode(a) for a in args]
                 for param, args in _parse_qs(py2_encode(qs)).items()}
+
 
     # Py2: When using str, we mean unicode string
     str = unicode
@@ -53,12 +56,10 @@ def log(msg, level=xbmc.LOGDEBUG):
         xbmc.log(addon.getAddonInfo('id') + ': ' + line, level)
 
 
-def notification(msg, **kwargs):
+def notification(msg, icon=xbmcgui.NOTIFICATION_ERROR):
     """Show a GUI notification"""
 
-    # Py2: dict.get() is ok with unicode, as long as it's all ASCII characters
-    xbmcgui.Dialog().notification(addon.getAddonInfo('name'), msg,
-                                  icon=kwargs.get('icon') or xbmcgui.NOTIFICATION_ERROR)
+    xbmcgui.Dialog().notification(addon.getAddonInfo('name'), msg, icon=icon)
 
 
 def get_json(url, exit_on_404=True):
@@ -68,8 +69,8 @@ def get_json(url, exit_on_404=True):
     log('opening ' + url, xbmc.LOGINFO)
     try:
         # urlopen returns bytes
-        # Set high timeout, because AWS blocks requests from urllib for about 10 sec
-        data = urlopen(url, timeout=20).read().decode('utf-8')
+        # Set high timeout, because AWS blocks requests from urllib for a while
+        data = urlopen(url, timeout=30).read().decode('utf-8')
 
     # Catches URLError, HTTPError, SSLError ...
     except IOError as e:
@@ -136,7 +137,7 @@ def request_to_self(pubdata=None, mode=None, pub=None, year=None, lang=None, lan
     query = {key: value for key, value in query.items() if value is not None}
 
     # argv[0] is path to the plugin
-    return sys.argv[0] + '?' + urlencode(query)
+    return str(sys.argv[0]) + '?' + urlencode(query)
 
 
 def get_translation(key):

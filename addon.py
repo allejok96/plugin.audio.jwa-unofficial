@@ -247,16 +247,15 @@ def get_pub_data(pubdata):
     """Get publication metadata from cache (download if needed)"""
 
     # Check for previous records
-    cached_pub = next(cache.publ.select(pubdata), None)
-    # No record
-    if cached_pub is None:
+    try:
+        cached_pub = next(cache.publ.select(pubdata))
+        if cached_pub.failed is None:
+            return cached_pub
+        # Has failed within the last 24 hours
+        elif datetime.now() < cached_pub.failed + timedelta(days=1):
+            raise NotFoundError
+    except StopIteration:
         pass
-    # Up to date
-    elif cached_pub.failed is None:
-        return cached_pub
-    # Has failed within the last 24 hours
-    elif datetime.now() < cached_pub.failed + timedelta(days=1):
-        raise NotFoundError
     # Refresh
     pub, media = download_pub_data(pubdata)
     return pub
@@ -307,9 +306,11 @@ class PublicationItem(MenuItem):
     def __init__(self, pubdata):
         # type: (PublicationData) -> None
 
-        super(PublicationItem, self).__init__(url=request_to_self(pubdata, mode=M.OPEN),
-                                              title=pubdata.title,
-                                              icon=pubdata.icon)
+        super(PublicationItem, self).__init__(
+            url=request_to_self(pubdata, mode=M.OPEN),
+            title=pubdata.title,
+            icon=pubdata.icon
+        )
 
 
 class MediaItem(MenuItem):
@@ -361,15 +362,26 @@ def top_level_page():
             # No suitable language was found, just write something to history, so this check won't run again
             addon.setSetting(SettingID.LANG_HIST, 'E')
 
-    MenuItem(request_to_self(mode=M.BIBLE),
-             T.BIBLE or S.BIBLE,
-             icon=ICON_BIBLE).add_item_in_kodi()
-    MenuItem(request_to_self(mode=M.MAGAZINES),
-             T.MAGAZINES or S.MAGAZINES,
-             icon=ICON_WATCHTOWER).add_item_in_kodi()
-    MenuItem(request_to_self(mode=M.BOOKS),
-             T.BOOKS or S.BOOKS,
-             icon=ICON_BOOKS).add_item_in_kodi()
+    fanart = os.path.join(addon.getAddonInfo('path'), addon.getAddonInfo('fanart'))
+
+    MenuItem(
+        url=request_to_self(mode=M.BIBLE),
+        title=T.BIBLE or S.BIBLE,
+        icon=ICON_BIBLE,
+        fanart=fanart
+    ).add_item_in_kodi()
+    MenuItem(
+        url=request_to_self(mode=M.MAGAZINES),
+        title=T.MAGAZINES or S.MAGAZINES,
+        icon=ICON_WATCHTOWER,
+        fanart=fanart
+    ).add_item_in_kodi()
+    MenuItem(
+        url=request_to_self(mode=M.BOOKS),
+        title=T.BOOKS or S.BOOKS,
+        icon=ICON_BOOKS,
+        fanart=fanart
+    ).add_item_in_kodi()
     xbmcplugin.endOfDirectory(addon_handle)
 
 
@@ -380,8 +392,7 @@ def bible_page():
     for bible in 'bi12', 'nwt':
         try:
             request = PublicationData(pub=bible, booknum=0, lang=global_language)
-            # Note: we download the bible index page, so it's always current
-            pub, media = download_pub_data(request)
+            pub = get_pub_data(request)
             PublicationItem(pub).add_item_in_kodi()
             success = True
         except NotFoundError:
@@ -406,23 +417,31 @@ def magazine_page(pub=None, year=None):
     """
     # Magazine list
     if not pub:
-        MenuItem(request_to_self(mode=M.MAGAZINES, pub='g'),
-                 T.AWAKE or S.AWAKE,
-                 icon=ICON_AWAKE).add_item_in_kodi()
+        MenuItem(
+            url=request_to_self(mode=M.MAGAZINES, pub='g'),
+            title=T.AWAKE or S.AWAKE,
+            icon=ICON_AWAKE
+        ).add_item_in_kodi()
 
-        MenuItem(request_to_self(mode=M.MAGAZINES, pub='wp'),
-                 T.WT or S.WT,
-                 icon=ICON_WATCHTOWER).add_item_in_kodi()
+        MenuItem(
+            url=request_to_self(mode=M.MAGAZINES, pub='wp'),
+            title=T.WT or S.WT,
+            icon=ICON_WATCHTOWER
+        ).add_item_in_kodi()
 
-        MenuItem(request_to_self(mode=M.MAGAZINES, pub='w'),
-                 T.WT_STUDY or S.WT_STUDY,
-                 icon=ICON_WATCHTOWER).add_item_in_kodi()
+        MenuItem(
+            url=request_to_self(mode=M.MAGAZINES, pub='w'),
+            title=T.WT_STUDY or S.WT_STUDY,
+            icon=ICON_WATCHTOWER
+        ).add_item_in_kodi()
 
         # Simplified only existed in a few languages
         if global_language in ('E', 'F', 'I', 'T', 'S'):
-            MenuItem(request_to_self(mode=M.MAGAZINES, pub='ws'),
-                     T.WT_SIMPLE or S.WT_SIMPLE,
-                     icon=ICON_WATCHTOWER).add_item_in_kodi()
+            MenuItem(
+                url=request_to_self(mode=M.MAGAZINES, pub='ws'),
+                title=T.WT_SIMPLE or S.WT_SIMPLE,
+                icon=ICON_WATCHTOWER
+            ).add_item_in_kodi()
 
     # Year list
     elif not year:
@@ -435,7 +454,10 @@ def magazine_page(pub=None, year=None):
                   'g': range(2008, max_year)}
 
         for year in sorted(ranges[pub], reverse=True):
-            MenuItem(request_to_self(mode=M.MAGAZINES, pub=pub, year=year), str(year)).add_item_in_kodi()
+            MenuItem(
+                url=request_to_self(mode=M.MAGAZINES, pub=pub, year=year),
+                title=str(year)
+            ).add_item_in_kodi()
 
     # Issue list
     else:
@@ -487,8 +509,8 @@ def pub_content_page(pubdata):
     """Browse any publication"""
 
     if pubdata.booknum == 0:
-        # Refresh if necessary (like if we've opened in another language)
-        get_pub_data(pubdata)
+        # Always refresh bible index page, so we have the latest
+        download_pub_data(pubdata)
         # Get all bible books in the bible
         search = PublicationData.copy(pubdata)
         search.booknum = Ignore
@@ -516,7 +538,10 @@ def books_page():
     for b in sorted(items, key=lambda x: x.title):
         b.add_item_in_kodi()
 
-    MenuItem(request_to_self(mode=M.ADD_BOOKS), S.ADD_MORE).add_item_in_kodi()
+    MenuItem(
+        url=request_to_self(mode=M.ADD_BOOKS),
+        title=S.ADD_MORE
+    ).add_item_in_kodi()
 
     xbmcplugin.endOfDirectory(addon_handle)
 

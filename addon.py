@@ -103,8 +103,8 @@ def getpubmedialinks_json(pubdata, alllangs=False, exit_on_404=True):
     return get_json(PUBMEDIA_API + '?' + urlencode(query), exit_on_404=exit_on_404)
 
 
-def request_to_self(pubdata=None, mode=None, pub=None, year=None, lang=None, langname=None, track=None):
-    # type: (PublicationData, str, str, int, str, str, int) -> str
+def request_to_self(mode, pubdata=None, pub=None, year=None, lang=None, langname=None, track=None):
+    # type: (str, PublicationData, str, int, str, str, int) -> str
     """Return a string with an URL request to the add-on itself
 
     Arguments override values from pubdata.
@@ -126,12 +126,13 @@ def request_to_self(pubdata=None, mode=None, pub=None, year=None, lang=None, lan
              Q.TRACK: track}
 
     # Overwrite empty values with values from pubdata
+    # Note: do not include language in the request, unless explicitly specified
+    # This will enable "viewed status" in Kodi to work for all languages
     if pubdata:
         query.update({
             Q.PUB: pub or pubdata.pub,
             Q.ISSUE: pubdata.issue,
-            Q.BOOKNUM: pubdata.booknum,
-            Q.LANG: lang or pubdata.lang})
+            Q.BOOKNUM: pubdata.booknum})
 
     # Remove empty queries
     query = {key: value for key, value in query.items() if value is not None}
@@ -307,7 +308,7 @@ class PublicationItem(MenuItem):
         # type: (PublicationData) -> None
 
         super(PublicationItem, self).__init__(
-            url=request_to_self(pubdata, mode=M.OPEN),
+            url=request_to_self(M.OPEN, pubdata=pubdata),
             title=pubdata.title,
             icon=pubdata.icon
         )
@@ -320,24 +321,33 @@ class MediaItem(MenuItem):
 
     def __init__(self, mediadata):
         # type: (MediaData) -> None
-
-        super(MediaItem, self).__init__(mediadata.url, mediadata.title)
-        self.duration = mediadata.duration
-
-        # Parent publication and track are needed for Play in other language
         self.pubdata = PublicationData.copy(mediadata)
         self.track = mediadata.track
+        self.duration = mediadata.duration
+        self.resolved_url = mediadata.url
+        super(MediaItem, self).__init__(
+            url=request_to_self(M.OPEN, pubdata=self.pubdata, track=self.track),
+            title=mediadata.title
+        )
 
     def listitem(self):
         li = super(MediaItem, self).listitem()
 
         li.setInfo('music', dict(duration=self.duration, title=self.title))
 
+        # For some reason needed for listitems that will open xbmcplugin.setResolvedUrl
+        li.setProperty('isPlayable', 'true')
+
         # Other language action
         # Note: RunPlugin opens as a background process
-        action = 'RunPlugin(' + request_to_self(self.pubdata, mode=M.LANGUAGES, track=self.track) + ')'
+        action = 'RunPlugin(' + request_to_self(M.LANGUAGES, pubdata=self.pubdata, track=self.track) + ')'
         li.addContextMenuItems([(S.PLAY_LANG, action)])
 
+        return li
+
+    def listitem_with_resolved_url(self):
+        li = self.listitem()
+        li.setPath(self.resolved_url)
         return li
 
 
@@ -346,8 +356,11 @@ def top_level_page():
 
     if addon.getSetting(SettingID.STARTUP_MSG) == 'true':
         dialog = xbmcgui.Dialog()
-        if dialog.yesno(S.THEO_WARN, S.NOT_SUPP_JW, nolabel=S.UNDERSTAND, yeslabel=S.MORE_INFO):
-            dialog.textviewer(S.THEO_WARN, S.DISCLAIMER)
+        try:
+            dialog.textviewer(S.THEO_WARN, S.DISCLAIMER)  # Kodi v16
+        except AttributeError:
+            dialog.ok(S.THEO_WARN, S.DISCLAIMER)
+        addon.setSetting(SettingID.STARTUP_MSG, 'false')
 
     # Auto set language, if it has never been set and Kodi is configured for something else then English
     isolang = xbmc.getLanguage(xbmc.ISO_639_1)
@@ -365,19 +378,19 @@ def top_level_page():
     fanart = os.path.join(addon.getAddonInfo('path'), addon.getAddonInfo('fanart'))
 
     MenuItem(
-        url=request_to_self(mode=M.BIBLE),
+        url=request_to_self(M.BIBLE),
         title=T.BIBLE or S.BIBLE,
         icon=ICON_BIBLE,
         fanart=fanart
     ).add_item_in_kodi()
     MenuItem(
-        url=request_to_self(mode=M.MAGAZINES),
+        url=request_to_self(M.MAGAZINES),
         title=T.MAGAZINES or S.MAGAZINES,
         icon=ICON_WATCHTOWER,
         fanart=fanart
     ).add_item_in_kodi()
     MenuItem(
-        url=request_to_self(mode=M.BOOKS),
+        url=request_to_self(M.BOOKS),
         title=T.BOOKS or S.BOOKS,
         icon=ICON_BOOKS,
         fanart=fanart
@@ -418,19 +431,19 @@ def magazine_page(pub=None, year=None):
     # Magazine list
     if not pub:
         MenuItem(
-            url=request_to_self(mode=M.MAGAZINES, pub='g'),
+            url=request_to_self(M.MAGAZINES, pub='g'),
             title=T.AWAKE or S.AWAKE,
             icon=ICON_AWAKE
         ).add_item_in_kodi()
 
         MenuItem(
-            url=request_to_self(mode=M.MAGAZINES, pub='wp'),
+            url=request_to_self(M.MAGAZINES, pub='wp'),
             title=T.WT or S.WT,
             icon=ICON_WATCHTOWER
         ).add_item_in_kodi()
 
         MenuItem(
-            url=request_to_self(mode=M.MAGAZINES, pub='w'),
+            url=request_to_self(M.MAGAZINES, pub='w'),
             title=T.WT_STUDY or S.WT_STUDY,
             icon=ICON_WATCHTOWER
         ).add_item_in_kodi()
@@ -438,7 +451,7 @@ def magazine_page(pub=None, year=None):
         # Simplified only existed in a few languages
         if global_language in ('E', 'F', 'I', 'T', 'S'):
             MenuItem(
-                url=request_to_self(mode=M.MAGAZINES, pub='ws'),
+                url=request_to_self(M.MAGAZINES, pub='ws'),
                 title=T.WT_SIMPLE or S.WT_SIMPLE,
                 icon=ICON_WATCHTOWER
             ).add_item_in_kodi()
@@ -455,7 +468,7 @@ def magazine_page(pub=None, year=None):
 
         for year in sorted(ranges[pub], reverse=True):
             MenuItem(
-                url=request_to_self(mode=M.MAGAZINES, pub=pub, year=year),
+                url=request_to_self(M.MAGAZINES, pub=pub, year=year),
                 title=str(year)
             ).add_item_in_kodi()
 
@@ -539,7 +552,7 @@ def books_page():
         b.add_item_in_kodi()
 
     MenuItem(
-        url=request_to_self(mode=M.ADD_BOOKS),
+        url=request_to_self(M.ADD_BOOKS),
         title=S.ADD_MORE
     ).add_item_in_kodi()
 
@@ -624,11 +637,13 @@ def language_dialog(pubdata=None, track=None, preselect=None):
         for code, name in languages:
             dialog_strings.append(name)
             if pubdata:
-                request = request_to_self(pubdata, mode=M.OPEN, lang=code, track=track)
+                request = request_to_self(M.PLAY, pubdata=pubdata, lang=code, track=track)
+                # Opens normally, like from a folder view
+                dialog_actions.append('PlayMedia(' + request + ')')
             else:
-                request = request_to_self(mode=M.SET_LANG, lang=code, langname=name)
-            # Note: RunPlugin opens in the background
-            dialog_actions.append('RunPlugin(' + request + ')')
+                request = request_to_self(M.SET_LANG, lang=code, langname=name)
+                # RunPlugin opens in the background
+                dialog_actions.append('RunPlugin(' + request + ')')
 
     finally:
         progressbar.close()
@@ -658,17 +673,20 @@ def save_language_history(lang):
     addon.setSetting(SettingID.LANG_HIST, ' '.join(history))
 
 
-def play_track(pubdata, track):
-    # type: (PublicationData, int) -> None
+def play_track(pubdata, track, resolve=False):
+    # type: (PublicationData, int, bool) -> None
     """Start playback of a track in a publication"""
 
     try:
         pub, media_list = download_pub_data(pubdata)
         item = next(MediaItem(m) for m in media_list if m.track == track)
-        pl = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
-        pl.clear()
-        pl.add(item.url, item.listitem())
-        xbmc.Player().play(pl)
+        if resolve:
+            xbmcplugin.setResolvedUrl(addon_handle, True, item.listitem_with_resolved_url())
+        else:
+            pl = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
+            pl.clear()
+            pl.add(item.resolved_url, item.listitem())
+            xbmc.Player().play(pl)
     except (NotFoundError, StopIteration):
         xbmcgui.Dialog().ok('', S.NOT_AVAIL)
 
@@ -748,14 +766,14 @@ try:
         set_language_action(args[Q.LANG], args.get(Q.LANG_NAME))
 
     elif arg_mode == M.OPEN:
-        # In case we've opened this in another language, save to history
-        if arg_pub.lang != global_language:
-            save_language_history(arg_pub.lang)
-
         if Q.TRACK in args:
-            play_track(arg_pub, int(args[Q.TRACK]))
+            play_track(arg_pub, int(args[Q.TRACK]), resolve=True)
         else:
             pub_content_page(arg_pub)
+
+    elif arg_mode == M.PLAY:
+        save_language_history(arg_pub.lang)
+        play_track(arg_pub, int(args[Q.TRACK]))
 
     elif arg_mode == M.CLEAN_CACHE:
         # Since translations was removed with the cache, update them now

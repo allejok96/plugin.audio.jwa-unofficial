@@ -258,6 +258,6 @@ class CustomConnection(sqlite3.Connection):
 
     def execute(self, sql, parameters=None):
         # type: (str, list) -> sqlite3.Cursor
-        log('{}, {}'.format(sql, parameters))
+        # log('{}, {}'.format(sql, parameters))
         # Py2 note: sql being unicode is alright
         return super(CustomConnection, self).execute(sql, parameters or [])

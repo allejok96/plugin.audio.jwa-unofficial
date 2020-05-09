@@ -28,21 +28,6 @@ msgctxt "#30006"
 msgid "Theocratic warning"
 msgstr ""
 
-# not supp jw
-msgctxt "#30007"
-msgid "This add-on is not supported by jw.org"
-msgstr ""
-
-# understand
-msgctxt "#30008"
-msgid "I understand"
-msgstr ""
-
-# more info
-msgctxt "#30009"
-msgid "More info"
-msgstr ""
-
 # bible
 msgctxt "#30010"
 msgid "Bible"
@@ -125,15 +110,15 @@ msgstr ""
 
 # disclaimer
 msgctxt "#30026"
-msgid "This add-on is not supported by, or affiliated with the Watchtower society in any way.\n\n"
-"Please use the JW Library app or the jw.org website, if you can.\n"
+msgid "This add-on is not supported by, or affiliated with the Watchtower society in any way.\n"
+"Please use the JW Library app or the jw.org website, if you can.\n\n"
 "Since this add-on is homemade, you must choose if you are willing to trust it.\n"
 "- The add-on may not work as intended.\n"
 "- You may not get all the benefits of jw.org.\n"
 "- The spiritual food could in absolute worst case be tampered with.\n\n"
 "Please read the following Watchtower article before you make up your mind:\n"
 "[B]w18 April page 30[/B]\n\n"
-"You can turn off this warning in the add-on settings."
+"This message will only be displayed once..."
 
 # db error
 msgctxt "#30027"

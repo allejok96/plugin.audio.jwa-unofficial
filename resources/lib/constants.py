@@ -51,6 +51,7 @@ class Query(object):
 class Mode(object):
     """Modes for use with mode= query to addon itself"""
     OPEN = 'open'
+    PLAY = 'play'
     BIBLE = 'bible'
     MAGAZINES = 'mag'
     BOOKS = 'books'
@@ -89,9 +90,6 @@ class LocalizedStringID(AttributeProxy):
     CONNECTION_ERROR = 30004
     LOADING_LANG = 30005
     THEO_WARN = 30006
-    NOT_SUPP_JW = 30007
-    UNDERSTAND = 30008
-    MORE_INFO = 30009
     BIBLE = 30010
     MAGAZINES = 30011
     BOOKS = 30012

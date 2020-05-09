@@ -640,7 +640,10 @@ def play_track(pubdata, track):
     try:
         pub, media_list = download_pub_data(pubdata)
         item = next(MediaItem(m) for m in media_list if m.track == track)
-        xbmc.Player().play(item.url, item.listitem())
+        pl = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
+        pl.clear()
+        pl.add(item.url, item.listitem())
+        xbmc.Player().play(pl)
     except (NotFoundError, StopIteration):
         xbmcgui.Dialog().ok('', S.NOT_AVAIL)
 

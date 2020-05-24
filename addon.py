@@ -192,33 +192,34 @@ def download_pub_data(pubdata):
         raise
 
     # Remove old publication metadata
-    # For bible index page: remove all bible books
-    if pubdata.booknum == 0:
-        bible = PublicationData.copy(pubdata)
-        bible.booknum = Ignore
-        cache.publ.delete(bible)
-    else:
-        cache.publ.delete(pubdata)
+    cache.publ.delete(pubdata)
+
+    # For bible index page: remove all bible books' metadata
+    # if pubdata.booknum == 0:
+    #    bible = PublicationData.copy(pubdata)
+    #    bible.booknum = Ignore
+    #    cache.publ.delete(bible)
 
     # Store new publication metadata
-    # Note: opening a publication for browsing media will refresh it
-    # and the Bible index page will refresh each time it opens too
-    # so we don't have to worry about entries growing old
+    # Note: opening a publication will refresh its metadata so that will deal with deprecated entries
     new_pub = PublicationData.copy(pubdata)
     title = j['pubName']
     if j.get('formattedDate'):
         title += ' ' + j['formattedDate']
     new_pub.title = unescape(title)
-    # Don't save icon for the bible, they are ugly atm
+    # Don't save Bible icons - they are ugly atm
     if pubdata.pub not in ('bi12', 'nwt'):
         new_pub.icon = j.get('pubImage', {}).get('url')
-    cache.publ.insert(new_pub)
+    # Don't save Bible books' metadata, it's refreshed each time so there's no need
+    if pubdata.booknum is None or pubdata.booknum == 0:
+        cache.publ.insert(new_pub)
 
     media_list = []
+    sub_pub_list = []
     try:
         for j_file in j['files'][pubdata.lang]['MP3']:
             try:
-                # Store new media metadata
+                # Make a list of media metadata
                 if j_file.get('mimetype') == 'audio/mpeg':
                     m = MediaData.copy(pubdata)
                     m.url = j_file['file']['url']
@@ -227,12 +228,14 @@ def download_pub_data(pubdata):
                     m.track = int(j_file.get('track'))
                     media_list.append(m)
 
-                # For the bible index page: Store title metadata in the publications table
+                # For the bible index page: make a list of the bible books' metadata
                 elif pubdata.booknum == 0:
                     sub_pub = PublicationData.copy(pubdata)
                     sub_pub.title = unescape(j_file['title'])
                     sub_pub.booknum = int(j_file['booknum'])
-                    cache.publ.insert(sub_pub)
+                    # We could store it in the database, but since it refreshes every time, that's not necessary
+                    # cache.publ.insert(sub_pub)
+                    sub_pub_list.append(sub_pub)
 
             except KeyError:
                 pass
@@ -240,7 +243,7 @@ def download_pub_data(pubdata):
     except KeyError:
         pass
 
-    return new_pub, media_list
+    return new_pub, sub_pub_list or media_list
 
 
 def get_pub_data(pubdata):
@@ -522,14 +525,9 @@ def pub_content_page(pubdata):
     """Browse any publication"""
 
     if pubdata.booknum == 0:
-        # Always refresh bible index page, so we have the latest
-        download_pub_data(pubdata)
-        # Get all bible books in the bible
-        search = PublicationData.copy(pubdata)
-        search.booknum = Ignore
-        items = [PublicationItem(result)
-                 for result in sorted(cache.publ.select(search), key=lambda x: x.booknum)
-                 if result.booknum is not None and result.booknum != 0]
+        # Always get a refreshed bible index page
+        pub, content = download_pub_data(pubdata)
+        items = map(PublicationItem, content)
     else:
         xbmcplugin.setContent(addon_handle, 'songs')
         pub, media_list = download_pub_data(pubdata)

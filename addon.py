@@ -69,8 +69,7 @@ def get_json(url, exit_on_404=True):
     log('opening ' + url, xbmc.LOGINFO)
     try:
         # urlopen returns bytes
-        # Set high timeout, because AWS blocks requests from urllib for a while
-        data = urlopen(url, timeout=30).read().decode('utf-8')
+        data = urlopen(url).read().decode('utf-8')
 
     # Catches URLError, HTTPError, SSLError ...
     except IOError as e:
@@ -165,8 +164,10 @@ def update_translations(lang):
     progressbar.update(50)
     try:
         url = '{}?docid={}&wtlocale={}'.format(FINDER_API, DOCID_MAGAZINES, lang)
+        log('scrapping translations from ' + url)
         # urlopen returns bytes
-        response = urlopen(url).read().decode('utf-8')
+        # Set high timeout, because AWS blocks requests from urllib for a while
+        response = urlopen(url, timeout=30).read().decode('utf-8')
         translations = JwOrgParser.parse(response)
         for key, value in translations.items():
             cache.trans.delete(TranslationData(key=key, lang=lang))

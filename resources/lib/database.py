@@ -87,14 +87,15 @@ class PublicationData(DataRow):
     """Layout of the publications table"""
 
     def __init__(self, pub=Ignore, issue=Ignore, booknum=Ignore, lang=Ignore,
-                 title=Ignore, icon=Ignore, failed=Ignore):
-        # type: (str, str, int, str, str, str, datetime) -> None
+                 title=Ignore, icon=Ignore, fanart=Ignore, failed=Ignore):
+        # type: (str, str, int, str, str, str, str, datetime) -> None
         self.pub = pub
         self.issue = issue
         self.booknum = booknum
         self.lang = lang
         self.title = title
         self.icon = icon
+        self.fanart = fanart
         self.failed = failed
 
 
@@ -105,14 +106,16 @@ class MediaData(DataRow):
     """
 
     def __init__(self, pub=Ignore, issue=Ignore, booknum=Ignore, lang=Ignore,
-                 url=Ignore, title=Ignore, duration=Ignore, track=Ignore):
-        # type: (str, str, int, str, str, str, int, int) -> None
+                 url=Ignore, title=Ignore, icon=Ignore, fanart=Ignore, duration=Ignore, track=Ignore):
+        # type: (str, str, int, str, str, str, str, str, int, int) -> None
         self.pub = pub
         self.issue = issue
         self.booknum = booknum
         self.lang = lang
         self.url = url
         self.title = title
+        self.icon = icon
+        self.fanart = fanart
         self.duration = duration
         self.track = track
 

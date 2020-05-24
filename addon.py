@@ -76,6 +76,7 @@ def get_json(url, exit_on_404=True):
     except IOError as e:
         # Pass on 404 for handling by someone else
         if isinstance(e, HTTPError) and e.code == 404 and not exit_on_404:
+            log('404 not found, ignoring')
             raise NotFoundError
         log(traceback.format_exc(), level=xbmc.LOGERROR)
         notification(S.CONNECTION_ERROR)
@@ -257,6 +258,7 @@ def get_pub_data(pubdata):
             return cached_pub
         # Has failed within the last 24 hours
         elif datetime.now() < cached_pub.failed + timedelta(days=1):
+            log('ignoring previously failed publication')
             raise NotFoundError
     except StopIteration:
         pass

@@ -95,7 +95,7 @@ def getpubmedialinks_json(pubdata, alllangs=False, exit_on_404=True):
                  pub=pubdata.pub,
                  issue=pubdata.issue,
                  booknum=pubdata.booknum,
-                 langspoken=pubdata.lang,
+                 langwritten=pubdata.lang,
                  txtCMSLang=pubdata.lang,
                  alllangs=int(alllangs))
     # Remove empty queries

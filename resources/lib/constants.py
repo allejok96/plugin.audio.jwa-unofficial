@@ -10,7 +10,7 @@ ICON_WATCHTOWER = 'https://wol.jw.org/img/watchtower@3x.png'
 ICON_AWAKE = 'https://wol.jw.org/img/awake@3x.png'
 
 LANGUAGE_API = 'https://www.jw.org/en/languages'
-PUBMEDIA_API = 'https://pubmedia.jw-api.org/GETPUBMEDIALINKS'
+PUBMEDIA_API = 'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS'
 FINDER_API = 'https://www.jw.org/finder'
 DOCID_MAGAZINES = '1011209'  # corresponds to the magazines page (2020-04-18)
 

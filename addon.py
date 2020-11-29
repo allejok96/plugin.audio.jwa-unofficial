@@ -478,26 +478,30 @@ def magazine_page(pub=None, year=None):
                 title=str(year)
             ).add_item_in_kodi()
 
-    # Issue list
     else:
-        # Determine release dates
-        if year == date.today().year:
-            max_month = date.today().month + 1
+        # List valid issues (formatted like YYYYMM) for the selected publication
+
+        # Since 2018: a new magazine every other month, alternating between watchtower and awake
+        if year >= 2018:
+            # If current year, go no higher than current month
+            if year == date.today().year:
+                max_month = date.today().month + 1
+            else:
+                max_month = 13
             ranges = {'w': range(1, max_month),
-                      'wp': range(1, 4, max_month),
-                      'g': range(3, 4, max_month)}
+                      'wp': range(1, max_month, 4),  # every four months
+                      'g': range(3, max_month, 4)}  # every four months
             issues = ['{}{:02}'.format(year, month) for month in ranges[pub]]
-        elif year >= 2018:
-            ranges = {'w': range(1, 13),
-                      'wp': (1, 5, 9),
-                      'g': (3, 7, 11)}
-            issues = ['{}{:02}'.format(year, month) for month in ranges[pub]]
+
+        # Since 2016: watchtower odd months, awake even months
         elif year >= 2016:
             ranges = {'w': range(1, 13),
                       'ws': range(1, 13),
                       'wp': range(1, 13, 2),  # odd months
                       'g': range(2, 13, 2)}  # even months
             issues = ['{}{:02}'.format(year, month) for month in ranges[pub]]
+
+        # Since earlier: public edition: YYYYMM01, study edition: YYYYMM15, awake: YYYYMM
         else:
             days = {'wp': '01',
                     'w': '15',
